@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Change Background</title>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container">
+        <a class="navbar-brand" href="{{ url_for('main.upload_file') }}"
+          >ImageTool</a
+        >
+        <div class="ml-auto">
+          {% if logged_in %}
+          <a href="{{ url_for('main.logout') }}" class="btn btn-outline-danger"
+            >Logout</a
+          >
+          {% else %}
+          <a href="{{ url_for('main.login') }}" class="btn btn-outline-primary"
+            >Sign In / Sign Up</a
+          >
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+
+    <div class="container mt-3">
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div
+        class="alert alert-{{ category }} alert-dismissible fade show"
+        role="alert"
+      >
+        {{ message }}
+        <button
+          type="button"
+          class="close"
+          data-dismiss="alert"
+          aria-label="Close"
+        >
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      {% endfor %} {% endif %} {% endwith %}
+    </div>
+
+    <div class="container mt-5">
+      <h2>Choose a Background</h2>
+      <form method="POST" action="{{ url_for('main.apply_background') }}">
+        <input type="hidden" name="filename" value="{{ filename }}" />
+        <div class="row">
+          {% for url in backgrounds %}
+          <div class="col-md-3 mb-3">
+            <label style="width: 100%">
+              <input
+                type="radio"
+                name="background_url"
+                value="{{ url }}"
+                required
+              />
+              <img src="{{ url }}" alt="Background" class="img-fluid mt-2" />
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+        <button class="btn btn-success mt-3" type="submit">
+          Apply Background
+        </button>
+      </form>
+
+      <hr class="my-5" />
+
+      <h4>Add Your Own Background</h4>
+      <form
+        method="POST"
+        action="{{ url_for('main.upload_background') }}"
+        enctype="multipart/form-data"
+      >
+        <input type="hidden" name="filename" value="{{ filename }}" />
+        <div class="form-group">
+          <input
+            type="file"
+            name="background_file"
+            class="form-control-file"
+            accept="image/*"
+            required
+          />
+        </div>
+        <button class="btn btn-primary" type="submit">Upload Background</button>
+      </form>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+  </body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Result</title>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container">
+        <a class="navbar-brand" href="#">ImageTool</a>
+        <div class="ml-auto">
+          {% if logged_in %}
+          <a href="{{ url_for('main.logout') }}" class="btn btn-outline-danger">
+            Logout
+          </a>
+          {% else %}
+          <a href="{{ url_for('main.login') }}" class="btn btn-outline-primary">
+            Sign In / Sign Up
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+
+    <div class="container mt-5">
+      <h1 class="text-center">Processed Image</h1>
+      <img src="{{ img_url }}" alt="Processed Image" class="img-fluid" />
+
+      <div class="text-center mt-3">
+        <a
+          href="{{ url_for('main.download_file', filename=filename) }}"
+          class="btn btn-primary"
+          >Download Image</a
+        >
+        <a
+          href="{{ url_for('main.change_background', filename=filename) }}"
+          class="btn btn-warning mt-3"
+          >Change Background</a
+        >
+      </div>
+
+      {% if not logged_in %}
+      <div class="mt-4">
+        <p class="text-center">
+          You have uploaded {{ session['upload_count'] }} / 3 images.
+        </p>
+      </div>
+      {% endif %}
+    </div>
+  </body>
+</html>

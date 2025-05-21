@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image Background Remover</title>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    />
+    <style>
+      .login-btn {
+        position: absolute;
+        top: 40px;
+        right: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    {% if logged_in %}
+    <a
+      href="{{ url_for('main.logout') }}"
+      class="btn btn-outline-danger login-btn"
+      >Logout</a
+    >
+    {% else %}
+    <a
+      href="{{ url_for('main.login') }}"
+      class="btn btn-outline-primary login-btn"
+      >Sign In / Sign Up</a
+    >
+    {% endif %}
+    <div class="container mt-5">
+      <h1 class="text-center">Upload Image to Remove Background</h1>
+      <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+          <input type="file" name="file" class="form-control-file" />
+        </div>
+        <button type="submit" class="btn btn-primary">Remove Background</button>
+      </form>
+      {% if not logged_in %}
+      <p class="text-center mt-2">
+        You have uploaded {{ session['upload_count'] }} / 3 images.
+      </p>
+      {% endif %}
+      <div class="mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %} {% if
+        messages %} {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %} {% endif %} {% endwith %}
+      </div>
+    </div>
+  </body>
+</html>

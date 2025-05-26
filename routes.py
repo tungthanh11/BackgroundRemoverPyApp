@@ -7,10 +7,11 @@ import logging
 import os
 import time
 import hashlib
-from db import create_user, get_db_connection, get_user_by_username_and_password, get_user_attempts, update_user_attempts, update_verification_status
-from s3_helper import upload_to_s3, get_s3_url, download_from_s3
+from db import create_user, get_db_connection, get_user_by_username_and_password, get_user_attempts, update_user_attempts, update_verification_status, get_background_url_by_user_id  
+from recognition_helper import detect_labels
+from s3_helper import upload_to_s3, get_s3_url
 from dotenv import load_dotenv
-from ses_helper import send_email_with_image_link, verify_email
+from ses_helper import verify_email
 from urllib.parse import urlparse
 
 load_dotenv()
@@ -60,31 +61,39 @@ def login():
 
     return render_template('login.html')
 
+
 @bp.route('/', methods=['GET', 'POST'])
 def upload_file():
     logged_in = 'user_id' in session
 
+
     if 'upload_count' not in session:
         session['upload_count'] = 0
+
 
     if request.method == 'POST':
         if not logged_in and session['upload_count'] >= 3:
             flash('You have reached the upload limit. Please log in to continue.', 'danger')
             return render_template('index.html', logged_in=False)
 
+
         if 'file' not in request.files:
             flash('No file part in the request', 'danger')
             return render_template('index.html', logged_in=logged_in)
 
+
         file = request.files['file']
+
 
         if file.filename == '':
             flash('No file selected', 'danger')
             return render_template('index.html', logged_in=logged_in)
 
+
         if not allowed_file(file.filename):
             flash('Only PNG, JPG, JPEG files allowed.', 'danger')
             return render_template('index.html', logged_in=logged_in)
+
 
         try:
             input_image = Image.open(file.stream).convert("RGBA")
@@ -92,29 +101,41 @@ def upload_file():
             flash('Invalid image file.', 'danger')
             return render_template('index.html', logged_in=logged_in)
 
+
         try:
             input_bytes = BytesIO()
             input_image.save(input_bytes, format='PNG')
-            input_bytes = input_bytes.getvalue()
+            input_bytes_value = input_bytes.getvalue()
 
-            output_bytes = remove(input_bytes)
+
+            output_bytes = remove(input_bytes_value)
             output_image = Image.open(BytesIO(output_bytes))
+
 
             filename = f"image_rmbg_{int(time.time())}.png"
             save_path = os.path.join('static', 'processed', filename)
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             output_image.save(save_path)
 
+
             if not logged_in:
                 session['upload_count'] += 1
 
+
+            # ✅ Gọi Rekognition để phân tích ảnh
+            rekog_labels = detect_labels(output_bytes)
+            label_names = [label['Name'] for label in rekog_labels]
+
+
             img_url = url_for('static', filename=f'processed/{filename}')
-            return render_template("result.html", img_url=img_url, filename=filename, logged_in=logged_in)
+            return render_template("result.html", img_url=img_url, filename=filename, labels=label_names, logged_in=logged_in)
+
 
         except Exception as e:
             logging.error("Exception occurred", exc_info=True)
             flash(f'Processing failed: {e}', 'danger')
             return render_template('index.html', logged_in=logged_in)
+
 
     return render_template('index.html', logged_in=logged_in)
 
@@ -202,25 +223,34 @@ def change_background(filename):
 
 @bp.route('/apply-background', methods=['POST'])
 def apply_background():
+    import requests
     from PIL import ImageOps
     from urllib.parse import urlparse
+
     print("Session inside apply_background:", dict(session))
 
     filename = request.form.get('filename')
-    background_url = request.form.get('background_url')
+    user_id = session.get('user_id')
 
-    if not filename or not background_url:
+    if not filename or not user_id:
         flash("Missing required data to apply background.", 'danger')
         return redirect(url_for('main.upload_file'))
 
     try:
+        background_url = get_background_url_by_user_id(user_id)
+        if not background_url:
+            flash("No background image found for your account.", 'danger')
+            return redirect(url_for('main.upload_file'))
+
+        print("🌐 Background URL:", background_url)
+
+        response = requests.get(background_url)
+        response.raise_for_status()
+        bg_file = BytesIO(response.content)
+
         fg_path = os.path.join('static', 'processed', filename)
         foreground = Image.open(fg_path).convert("RGBA")
 
-        parsed = urlparse(background_url)
-        bg_key = parsed.path.lstrip('/')
-
-        bg_file = download_from_s3(BUCKET_NAME, bg_key)
         background = Image.open(bg_file).convert("RGBA").resize(foreground.size)
 
         result = Image.alpha_composite(background, foreground)
@@ -228,7 +258,6 @@ def apply_background():
         new_filename = f"final_{int(time.time())}.png"
         save_path = os.path.join('static', 'processed', new_filename)
         result.save(save_path)
-        user_id = session['user_id']
 
         img_url = url_for('static', filename=f'processed/{new_filename}')
         return render_template("result.html", img_url=img_url, filename=new_filename, logged_in='user_id' in session)

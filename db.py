@@ -82,3 +82,13 @@ def is_user_verified(email):
     cursor.close()
     connection.close()
     return result['verified'] if result else False
+
+
+def get_background_url_by_user_id(user_id):
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute('SELECT url_background FROM images WHERE user_id = %s ORDER BY id DESC LIMIT 1', (user_id,))
+    result = cursor.fetchone()
+    cursor.close()
+    connection.close()
+    return result['url_background'] if result else None
